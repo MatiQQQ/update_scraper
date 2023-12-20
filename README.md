@@ -15,3 +15,4 @@ python 3.11+
 
 Workflow will be triggered automatically every month from 8th to 15th.
 This range of days has been set to always catch 'patch Tuesday' and get the newest links every month.
+The workflow will run python script to get a new links then replace the content in update_tool.ps1 and at the end upload the articact.
