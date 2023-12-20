@@ -1,0 +1,6 @@
+*.txt
+bin/
+include/
+lib/
+*.cfg
+!requirements.txt
