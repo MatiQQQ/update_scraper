@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import re
 
-
 initial_links = [
     {
         'url': "https://www.catalog.update.microsoft.com/Search.aspx?q=CURRENT_YEAR-CURRENT_MONTH%20Cumulative%20Update%20for%20Windows%2010%20Version%2021H2%20for%20x64-based%20Systems%20",
@@ -64,7 +63,6 @@ def check_element_visibility(url_template: str, search_text: str, max_depth: int
         response = requests.get(current_url)
         if response.ok:  # Better check for successful response
             soup = BeautifulSoup(response.content, 'html.parser')
-            anchor_texts = []
 
             # Find the table by class 'resultsBackGround', then navigate to <tbody> > <tr> > <td> > <a>
             table = soup.find('table', class_='resultsBackGround')
@@ -75,7 +73,8 @@ def check_element_visibility(url_template: str, search_text: str, max_depth: int
                     td = tr.find_all('td')
                     a_tag = td[1].find('a') if td else None
                     if a_tag and search_text in a_tag.get_text(strip=True):
-                        return {'status': 'Found', 'depth': current_depth, 'html_content': response.content, 'year': year,
+                        return {'status': 'Found', 'depth': current_depth, 'html_content': response.content,
+                                'year': year,
                                 'month': month}
 
             # If not found, decrement the month and year if necessary
@@ -92,8 +91,7 @@ def check_element_visibility(url_template: str, search_text: str, max_depth: int
     return {'error': 'Text not found in any anchor within the specified depth.'}
 
 
-def find_element_with_text(html_content: str, search_text: str, exclude_text: str = "Dynamic", year: int | None = None,
-                          month: int | None = None) -> Tag | None:
+def find_element_with_text(html_content: str, search_text: str, exclude_text: str = "Dynamic") -> Tag | None:
     """
     Searches through a table for an element (bs4 Tag) that contains specific text and does not contain another specified text.
     Returns the bs4 Tag if found, or None if no such element exists.
@@ -101,19 +99,19 @@ def find_element_with_text(html_content: str, search_text: str, exclude_text: st
 
     try:
 
-            soup = BeautifulSoup(html_content, 'html.parser')
+        soup = BeautifulSoup(html_content, 'html.parser')
 
-            # Find the table by class 'resultsBackGround'
-            table = soup.find('table', class_='resultsBackGround')
-            if table:
-                trs = table.find_all('tr')
-                for tr in trs[1:]:
-                    tds = tr.find_all('td')
-                    td = tds[1]
-                    a_tag = td.find('a')
-                    a_tag_text = a_tag.get_text(strip=True)
-                    if search_text in a_tag_text and exclude_text not in a_tag_text:
-                        return td  # Return the bs4 Tag object directly
+        # Find the table by class 'resultsBackGround'
+        table = soup.find('table', class_='resultsBackGround')
+        if table:
+            trs = table.find_all('tr')
+            for tr in trs[1:]:
+                tds = tr.find_all('td')
+                td = tds[1]
+                a_tag = td.find('a')
+                a_tag_text = a_tag.get_text(strip=True)
+                if search_text in a_tag_text and exclude_text not in a_tag_text:
+                    return td  # Return the bs4 Tag object directly
 
     except Exception as e:
         print(f"Error: {e}")
@@ -133,7 +131,8 @@ def find_kb_number(element: Tag) -> str:
 def get_build_number(kb_number: str) -> dict:
     response = requests.get(f"https://support.microsoft.com/help/{kb_number}")
     soup = BeautifulSoup(response.content, "html.parser")
-    header = soup.find('header', attrs={'class': 'ocpArticleTitleSection', 'aria-labelledby': 'page-header', 'role': 'banner'})
+    header = soup.find('header',
+                       attrs={'class': 'ocpArticleTitleSection', 'aria-labelledby': 'page-header', 'role': 'banner'})
     title = header.find('h1').text.strip()
     pattern = r'1904[45]\.\d+'
 
@@ -175,7 +174,7 @@ def find_anchor_id(element: Tag) -> str | None:
         return None
 
 
-def fetch_update_html_content(update_id: str) ->  str:
+def fetch_update_html_content(update_id: str) -> str:
     """
     Fetches the HTML content for a given update ID from the Microsoft Update Catalog.
 
@@ -214,6 +213,7 @@ def get_update_final_link(html_content: str) -> str | None:
         print("URL not found.")
         return None
 
+
 def create_list_of_updates(list_of_initial_urls: list[dict]) -> list[dict]:
     current_year = datetime.now().year
     current_month = datetime.now().month
@@ -236,9 +236,10 @@ def create_list_of_updates(list_of_initial_urls: list[dict]) -> list[dict]:
             final_dict['kb_number'] = kb_number
             if initial_url['type'] == 'cumulative':
                 build_number_dict = get_build_number(kb_number)
-                final_dict['build_number'] = build_number_dict[f'{initial_url.get('version')}_number']
+                final_dict['build_number'] = build_number_dict[f'{initial_url['version']}_number']
             result_list.append(final_dict)
     return result_list
+
 
 def replace_content_between_markers(file_path, start_marker, end_marker, new_content):
     """
@@ -263,9 +264,10 @@ def replace_content_between_markers(file_path, start_marker, end_marker, new_con
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(modified_content)
 
-def create_replace_content(list_of_updates: list[dict]) -> str:
+
+def create_replace_content(final_list_of_updates: list[dict]) -> str:
     string_of_objects = ''
-    for update in list_of_updates:
+    for update in final_list_of_updates:
         string_of_objects += f"""[pscustomobject]@{{
             Type = '{update['type']}'
             FeatureVersion = '{update['version']}'
@@ -279,6 +281,7 @@ $arrayOfUpdates=@(
 )   
 """
     return result
+
 
 if __name__ == '__main__':
     list_of_updates = create_list_of_updates(initial_links)
